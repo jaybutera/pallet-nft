@@ -124,6 +124,13 @@ decl_storage! {
         /// A mapping from a commodity ID to the account that owns it.
         AccountForCommodity get(fn account_for_commodity): map hasher(identity) CommodityId<T> => T::AccountId;
     }
+
+    add_extra_genesis {
+        config(balances): Vec<(T::AccountId, Vec<T::CommodityInfo>)>;
+        build(|_config: &GenesisConfig<T, I>| {
+            // TODO: Mint initial assets.
+        });
+    }
 }
 
 decl_event!(
