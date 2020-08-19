@@ -159,7 +159,7 @@ decl_error! {
 }
 
 decl_module! {
-    pub struct Module<T: Trait<I>, I: Instance = DefaultInstance> for enum Call where origin: T::Origin {
+    pub struct Module<T: Trait<I>, I: Instance = DefaultInstance> for enum Call where origin: T::Origin, system = frame_system {
         type Error = Error<T, I>;
         fn deposit_event() = default;
 

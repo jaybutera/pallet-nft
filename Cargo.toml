@@ -41,9 +41,6 @@ default-features = false
 tag = 'v2.0.0-rc3'
 version = '2.0.0-rc3'
 
-# [patch."https://github.com/paritytech/substrate.git"]
-# sp-core = { path = "../substrate/primitives/core" }
-
 [dev-dependencies.sp-core]
 default-features = false
 git = 'https://github.com/paritytech/substrate.git'
