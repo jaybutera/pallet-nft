@@ -14,6 +14,18 @@ impl_outer_origin! {
     pub enum Origin for Test where system = frame_system {}
 }
 
+impl Origin {
+    /// Create with system root origin and no filter.
+    pub fn root() -> Self {
+        frame_system::RawOrigin::Root.into()
+    }
+}
+
+// For testing the pallet, we construct most of a mock runtime. This means
+// first constructing a configuration type (`Test`) which `impl`s each of the
+// configuration traits of pallets we want to use.
+#[derive(Clone, Eq, PartialEq)]
+pub struct Test;
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
     pub const MaximumBlockWeight: Weight = 1024;
@@ -22,7 +34,7 @@ parameter_types! {
 }
 
 impl system::Trait for Test {
-    type BaseCallFilter = ();
+    //type BaseCallFilter = ();
     type Origin = Origin;
     type Call = ();
     type Index = u64;
@@ -46,19 +58,13 @@ impl system::Trait for Test {
     type AccountData = ();
     type OnNewAccount = ();
     type OnKilledAccount = ();
-    type SystemWeightInfo = ();
+    //type SystemWeightInfo = ();
 }
 
 parameter_types! {
     pub const MaxCommodities: u128 = 5;
     pub const MaxCommoditiesPerUser: u64 = 2;
 }
-
-// For testing the pallet, we construct most of a mock runtime. This means
-// first constructing a configuration type (`Test`) which `impl`s each of the
-// configuration traits of pallets we want to use.
-#[derive(Clone, Eq, PartialEq)]
-pub struct Test;
 
 impl Trait for Test {
     type Event = ();
