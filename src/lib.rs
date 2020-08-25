@@ -39,12 +39,12 @@
 use codec::{Decode, Encode, FullCodec};
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage, dispatch, ensure,
-    traits::{EnsureOrigin, Get},
+    traits::{Get},
     Hashable,
 };
 use frame_system::ensure_signed;
 use sp_runtime::{
-    traits::{Hash, Member},
+    traits::{EnsureOrigin, Hash, Member},
     RuntimeDebug,
 };
 use sp_std::{
@@ -122,7 +122,7 @@ decl_storage! {
         /// A mapping from an account to a list of all of the commodities of this type that are owned by it.
         CommoditiesForAccount get(fn commodities_for_account): map hasher(blake2_128_concat) T::AccountId => Vec<CommodityFor<T, I>>;
         /// A mapping from a commodity ID to the account that owns it.
-        AccountForCommodity get(fn account_for_commodity): map hasher(identity) CommodityId<T> => T::AccountId;
+        AccountForCommodity get(fn account_for_commodity): map hasher(blake2_128_concat) CommodityId<T> => T::AccountId;
     }
 }
 
@@ -176,7 +176,7 @@ decl_module! {
         ///
         /// - `owner_account`: Receiver of the commodity.
         /// - `commodity_info`: The information that defines the commodity.
-        #[weight = 10_000]
+        //#[weight = 10_000]
         pub fn mint(origin, owner_account: T::AccountId, commodity_info: T::CommodityInfo) -> dispatch::DispatchResult {
             T::CommodityAdmin::ensure_origin(origin)?;
 
@@ -191,7 +191,7 @@ decl_module! {
         ///
         /// - `commodity_id`: The hash (calculated by the runtime system's hashing algorithm)
         ///   of the info that defines the commodity to destroy.
-        #[weight = 10_000]
+        //#[weight = 10_000]
         pub fn burn(origin, commodity_id: CommodityId<T>) -> dispatch::DispatchResult {
             let who = ensure_signed(origin)?;
             ensure!(who == Self::account_for_commodity(&commodity_id), Error::<T, I>::NotCommodityOwner);
@@ -211,7 +211,7 @@ decl_module! {
         /// - `dest_account`: Receiver of the commodity.
         /// - `commodity_id`: The hash (calculated by the runtime system's hashing algorithm)
         ///   of the info that defines the commodity to destroy.
-        #[weight = 10_000]
+        //#[weight = 10_000]
         pub fn transfer(origin, dest_account: T::AccountId, commodity_id: CommodityId<T>) -> dispatch::DispatchResult {
             let who = ensure_signed(origin)?;
             ensure!(who == Self::account_for_commodity(&commodity_id), Error::<T, I>::NotCommodityOwner);
