@@ -53,8 +53,11 @@ use sp_std::{
     vec::Vec,
 };
 
+mod unique_assets;
+use unique_assets::traits::*;
+
 pub mod nft;
-pub use crate::nft::{UniqueAssets, NFT};
+//pub use crate::nft::{UniqueAssets, NFT};
 
 #[cfg(test)]
 mod mock;
@@ -87,7 +90,7 @@ pub struct Commodity<Hash, CommodityInfo> {
 /// An alias for this pallet's NFT implementation.
 pub type CommodityFor<T, I> = Commodity<CommodityId<T>, <T as Trait<I>>::CommodityInfo>;
 
-impl<CommodityId, CommodityInfo> NFT for Commodity<CommodityId, CommodityInfo> {
+impl<CommodityId, CommodityInfo> Nft for Commodity<CommodityId, CommodityInfo> {
     type Id = CommodityId;
     type Info = CommodityInfo;
 }
@@ -180,7 +183,7 @@ decl_module! {
         pub fn mint(origin, owner_account: T::AccountId, commodity_info: T::CommodityInfo) -> dispatch::DispatchResult {
             T::CommodityAdmin::ensure_origin(origin)?;
 
-            let commodity_id = <Self as UniqueAssets<_>>::mint(&owner_account, commodity_info)?;
+            let commodity_id = <Self as Mintable<_>>::mint(&owner_account, commodity_info)?;
             Self::deposit_event(RawEvent::Minted(commodity_id, owner_account.clone()));
             Ok(())
         }
@@ -196,7 +199,7 @@ decl_module! {
             let who = ensure_signed(origin)?;
             ensure!(who == Self::account_for_commodity(&commodity_id), Error::<T, I>::NotCommodityOwner);
 
-            <Self as UniqueAssets<_>>::burn(&commodity_id)?;
+            <Self as Burnable<_>>::burn(&commodity_id)?;
             Self::deposit_event(RawEvent::Burned(commodity_id.clone()));
             Ok(())
         }
@@ -234,10 +237,6 @@ impl<T: Trait<I>, I: Instance>
         Self::total()
     }
 
-    fn burned() -> u128 {
-        Self::burned()
-    }
-
     fn total_for_account(account: &T::AccountId) -> u64 {
         Self::total_for_account(account)
     }
@@ -251,6 +250,51 @@ impl<T: Trait<I>, I: Instance>
     fn owner_of(commodity_id: &CommodityId<T>) -> T::AccountId {
         Self::account_for_commodity(commodity_id)
     }
+
+    fn transfer(
+        dest_account: &T::AccountId,
+        commodity_id: &CommodityId<T>,
+    ) -> dispatch::DispatchResult {
+        let owner = Self::owner_of(&commodity_id);
+        ensure!(
+            owner != T::AccountId::default(),
+            Error::<T, I>::NonexistentCommodity
+        );
+
+        ensure!(
+            Self::total_for_account(dest_account) < T::UserCommodityLimit::get(),
+            Error::<T, I>::TooManyCommoditiesForAccount
+        );
+
+        let xfer_commodity = Commodity::<CommodityId<T>, <T as Trait<I>>::CommodityInfo> {
+            id: *commodity_id,
+            commodity: <T as Trait<I>>::CommodityInfo::default(),
+        };
+
+        TotalForAccount::<T, I>::mutate(&owner, |total| *total -= 1);
+        TotalForAccount::<T, I>::mutate(dest_account, |total| *total += 1);
+        let commodity = CommoditiesForAccount::<T, I>::mutate(owner, |commodities| {
+            let pos = commodities
+                .binary_search(&xfer_commodity)
+                .expect("We already checked that we have the correct owner; qed");
+            commodities.remove(pos)
+        });
+        CommoditiesForAccount::<T, I>::mutate(dest_account, |commodities| {
+            match commodities.binary_search(&commodity) {
+                Ok(_pos) => {} // should never happen
+                Err(pos) => commodities.insert(pos, commodity),
+            }
+        });
+        AccountForCommodity::<T, I>::insert(&commodity_id, &dest_account);
+
+        Ok(())
+    }
+}
+
+impl<T: Trait<I>, I: Instance>
+    Mintable<Commodity<CommodityId<T>, <T as Trait<I>>::CommodityInfo>> for Module<T, I>
+{
+    type AccountId = <T as frame_system::Trait>::AccountId;
 
     fn mint(
         owner_account: &T::AccountId,
@@ -290,6 +334,15 @@ impl<T: Trait<I>, I: Instance>
 
         Ok(commodity_id)
     }
+}
+
+
+impl<T: Trait<I>, I: Instance>
+    Burnable<Commodity<CommodityId<T>, <T as Trait<I>>::CommodityInfo>> for Module<T, I>
+{
+    fn burned() -> u128 {
+        Self::burned()
+    }
 
     fn burn(commodity_id: &CommodityId<T>) -> dispatch::DispatchResult {
         let owner = Self::owner_of(commodity_id);
@@ -313,45 +366,6 @@ impl<T: Trait<I>, I: Instance>
             commodities.remove(pos);
         });
         AccountForCommodity::<T, I>::remove(&commodity_id);
-
-        Ok(())
-    }
-
-    fn transfer(
-        dest_account: &T::AccountId,
-        commodity_id: &CommodityId<T>,
-    ) -> dispatch::DispatchResult {
-        let owner = Self::owner_of(&commodity_id);
-        ensure!(
-            owner != T::AccountId::default(),
-            Error::<T, I>::NonexistentCommodity
-        );
-
-        ensure!(
-            Self::total_for_account(dest_account) < T::UserCommodityLimit::get(),
-            Error::<T, I>::TooManyCommoditiesForAccount
-        );
-
-        let xfer_commodity = Commodity::<CommodityId<T>, <T as Trait<I>>::CommodityInfo> {
-            id: *commodity_id,
-            commodity: <T as Trait<I>>::CommodityInfo::default(),
-        };
-
-        TotalForAccount::<T, I>::mutate(&owner, |total| *total -= 1);
-        TotalForAccount::<T, I>::mutate(dest_account, |total| *total += 1);
-        let commodity = CommoditiesForAccount::<T, I>::mutate(owner, |commodities| {
-            let pos = commodities
-                .binary_search(&xfer_commodity)
-                .expect("We already checked that we have the correct owner; qed");
-            commodities.remove(pos)
-        });
-        CommoditiesForAccount::<T, I>::mutate(dest_account, |commodities| {
-            match commodities.binary_search(&commodity) {
-                Ok(_pos) => {} // should never happen
-                Err(pos) => commodities.insert(pos, commodity),
-            }
-        });
-        AccountForCommodity::<T, I>::insert(&commodity_id, &dest_account);
 
         Ok(())
     }

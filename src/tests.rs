@@ -1,7 +1,8 @@
 // Tests to be written here
 
 use crate::mock::*;
-use crate::nft::UniqueAssets;
+//use crate::nft::UniqueAssets;
+use crate::unique_assets::traits::*;
 use crate::*;
 use frame_support::{assert_err, assert_ok, Hashable};
 use sp_core::H256;
@@ -23,7 +24,7 @@ fn mint() {
         assert_eq!(SUT::total(), 1);
         assert_eq!(<SUT as UniqueAssets<_>>::total(), 1);
         assert_eq!(SUT::burned(), 0);
-        assert_eq!(<SUT as UniqueAssets<_>>::burned(), 0);
+        assert_eq!(<SUT as Burnable<_>>::burned(), 0);
         assert_eq!(SUT::total_for_account(1), 1);
         assert_eq!(<SUT as UniqueAssets<_>>::total_for_account(&1), 1);
         let commodities_for_account = SUT::commodities_for_account::<u64>(1);
